@@ -1,0 +1,579 @@
+openapi: 3.0.3
+info:
+  title: Expense API
+  version: 0.1.0
+servers:
+  - url: /
+security:
+  - oauth2: []
+paths:
+  /me:
+    get:
+      operationId: getMe
+      summary: The caller's profile (created on first call)
+      responses:
+        '200':
+          description: The caller
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Employee' }
+        '401': { $ref: '#/components/responses/Error' }
+  /categories:
+    get:
+      operationId: listCategories
+      summary: Expense categories
+      parameters:
+        - { $ref: '#/components/parameters/limit' }
+        - { $ref: '#/components/parameters/offset' }
+      responses:
+        '200':
+          description: Categories
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [count, data]
+                properties:
+                  count: { type: integer }
+                  next: { type: string, nullable: true }
+                  previous: { type: string, nullable: true }
+                  data: { type: array, items: { $ref: '#/components/schemas/Category' } }
+        '401': { $ref: '#/components/responses/Error' }
+    post:
+      operationId: createCategory
+      summary: Add a category
+      security:
+        - oauth2: [categories:manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Category' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+  /categories/{categoryId}:
+    delete:
+      operationId: deleteCategory
+      summary: Remove a category
+      security:
+        - oauth2: [categories:manage]
+      parameters:
+        - { $ref: '#/components/parameters/categoryId' }
+      responses:
+        '204': { description: Removed }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /settings/receipt-threshold:
+    get:
+      operationId: getReceiptThreshold
+      summary: Amount above which a receipt is required
+      responses:
+        '200':
+          description: Threshold
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReceiptThreshold' }
+        '401': { $ref: '#/components/responses/Error' }
+    put:
+      operationId: setReceiptThreshold
+      summary: Change the receipt threshold
+      security:
+        - oauth2: [settings:manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReceiptThreshold' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReceiptThreshold' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+  /me/claims:
+    get:
+      operationId: listMyClaims
+      summary: The caller's claims
+      security:
+        - oauth2: [claims:read]
+      parameters:
+        - { $ref: '#/components/parameters/limit' }
+        - { $ref: '#/components/parameters/offset' }
+        - { $ref: '#/components/parameters/status' }
+      responses:
+        '200': { $ref: '#/components/responses/ClaimPage' }
+        '401': { $ref: '#/components/responses/Error' }
+    post:
+      operationId: createMyClaim
+      summary: Create a draft claim for the caller
+      security:
+        - oauth2: [claims:submit]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ClaimInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Claim' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+  /me/claims/{claimId}:
+    get:
+      operationId: getMyClaim
+      summary: One of the caller's claims
+      security:
+        - oauth2: [claims:read]
+      parameters:
+        - { $ref: '#/components/parameters/claimId' }
+      responses:
+        '200': { $ref: '#/components/responses/Claim' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    put:
+      operationId: updateMyClaim
+      summary: Replace the lines of the caller's claim until a manager acts
+      security:
+        - oauth2: [claims:submit]
+      parameters:
+        - { $ref: '#/components/parameters/claimId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ClaimInput' }
+      responses:
+        '200': { $ref: '#/components/responses/Claim' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+  /me/claims/{claimId}/submit:
+    post:
+      operationId: submitMyClaim
+      summary: Submit or resubmit the caller's claim
+      security:
+        - oauth2: [claims:submit]
+      parameters:
+        - { $ref: '#/components/parameters/claimId' }
+      responses:
+        '200': { $ref: '#/components/responses/Claim' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+  /me/claims/{claimId}/withdraw:
+    post:
+      operationId: withdrawMyClaim
+      summary: Withdraw the caller's submitted claim
+      security:
+        - oauth2: [claims:submit]
+      parameters:
+        - { $ref: '#/components/parameters/claimId' }
+      responses:
+        '200': { $ref: '#/components/responses/Claim' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+  /me/claims/{claimId}/lines/{lineId}/receipts:
+    post:
+      operationId: addMyReceipt
+      summary: Attach a receipt to a line of the caller's claim
+      security:
+        - oauth2: [claims:submit]
+      parameters:
+        - { $ref: '#/components/parameters/claimId' }
+        - { $ref: '#/components/parameters/lineId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReceiptInput' }
+      responses:
+        '201':
+          description: Attached
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Receipt' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+  /me/claims/{claimId}/lines/{lineId}/receipts/{receiptId}:
+    get:
+      operationId: downloadMyReceipt
+      summary: Download a receipt of the caller's claim
+      security:
+        - oauth2: [claims:read]
+      parameters:
+        - { $ref: '#/components/parameters/claimId' }
+        - { $ref: '#/components/parameters/lineId' }
+        - { $ref: '#/components/parameters/receiptId' }
+      responses:
+        '200':
+          description: The receipt file
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /me/team/claims:
+    get:
+      operationId: listTeamClaims
+      summary: The caller's team's claims, oldest first
+      security:
+        - oauth2: [claims:review-team]
+      parameters:
+        - { $ref: '#/components/parameters/limit' }
+        - { $ref: '#/components/parameters/offset' }
+        - { $ref: '#/components/parameters/status' }
+      responses:
+        '200': { $ref: '#/components/responses/ClaimPage' }
+        '401': { $ref: '#/components/responses/Error' }
+  /me/team/claims/{claimId}:
+    get:
+      operationId: getTeamClaim
+      summary: One claim of the caller's team
+      security:
+        - oauth2: [claims:review-team]
+      parameters:
+        - { $ref: '#/components/parameters/claimId' }
+      responses:
+        '200': { $ref: '#/components/responses/Claim' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /me/team/claims/{claimId}/lines/{lineId}/receipts/{receiptId}:
+    get:
+      operationId: downloadTeamReceipt
+      summary: Download a receipt of a team claim
+      security:
+        - oauth2: [claims:review-team]
+      parameters:
+        - { $ref: '#/components/parameters/claimId' }
+        - { $ref: '#/components/parameters/lineId' }
+        - { $ref: '#/components/parameters/receiptId' }
+      responses:
+        '200':
+          description: The receipt file
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /me/team/claims/{claimId}/approve:
+    post:
+      operationId: approveTeamClaim
+      summary: Approve a team claim
+      security:
+        - oauth2: [claims:approve]
+      parameters:
+        - { $ref: '#/components/parameters/claimId' }
+      responses:
+        '200': { $ref: '#/components/responses/Claim' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+  /me/team/claims/{claimId}/reject:
+    post:
+      operationId: rejectTeamClaim
+      summary: Reject a team claim with a reason
+      security:
+        - oauth2: [claims:reject]
+      parameters:
+        - { $ref: '#/components/parameters/claimId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Claim' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+  /claims:
+    get:
+      operationId: listClaims
+      summary: Every claim, filterable by status and export state
+      security:
+        - oauth2: [claims:read-all]
+      parameters:
+        - { $ref: '#/components/parameters/limit' }
+        - { $ref: '#/components/parameters/offset' }
+        - { $ref: '#/components/parameters/status' }
+        - name: exported
+          in: query
+          schema: { type: boolean }
+      responses:
+        '200': { $ref: '#/components/responses/ClaimPage' }
+        '401': { $ref: '#/components/responses/Error' }
+  /exports:
+    get:
+      operationId: listExports
+      summary: Every past export
+      security:
+        - oauth2: [exports:read]
+      parameters:
+        - { $ref: '#/components/parameters/limit' }
+        - { $ref: '#/components/parameters/offset' }
+      responses:
+        '200':
+          description: Exports
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [count, data]
+                properties:
+                  count: { type: integer }
+                  next: { type: string, nullable: true }
+                  previous: { type: string, nullable: true }
+                  data: { type: array, items: { $ref: '#/components/schemas/ExportBatch' } }
+        '401': { $ref: '#/components/responses/Error' }
+    post:
+      operationId: createExport
+      summary: Export selected approved claims, or all not yet exported, as CSV
+      security:
+        - oauth2: [exports:create]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                claimIds:
+                  type: array
+                  items: { type: string }
+                  description: Claims to export; omit to export every approved claim not yet exported
+      responses:
+        '200':
+          description: CSV with one row per claim (employee, claim ID, total amount in cents, approval date)
+          content:
+            text/csv:
+              schema: { type: string }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+  /employees:
+    get:
+      operationId: listEmployees
+      summary: Every employee
+      security:
+        - oauth2: [employees:read-all]
+      parameters:
+        - { $ref: '#/components/parameters/limit' }
+        - { $ref: '#/components/parameters/offset' }
+      responses:
+        '200':
+          description: Employees
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [count, data]
+                properties:
+                  count: { type: integer }
+                  next: { type: string, nullable: true }
+                  previous: { type: string, nullable: true }
+                  data: { type: array, items: { $ref: '#/components/schemas/Employee' } }
+        '401': { $ref: '#/components/responses/Error' }
+  /employees/{employeeId}/manager:
+    put:
+      operationId: setEmployeeManager
+      summary: Set an employee's line manager
+      security:
+        - oauth2: [employees:manage]
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [managerId]
+              properties:
+                managerId: { type: string }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Employee' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+components:
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: /oauth2/authorize
+          tokenUrl: /oauth2/token
+          scopes:
+            claims:read: The caller's own claims
+            claims:submit: Create, edit, submit and withdraw the caller's claims
+            claims:review-team: Claims of the caller's team
+            claims:approve: Approve a team claim
+            claims:reject: Reject a team claim
+            claims:read-all: Every claim
+            exports:create: Export approved claims
+            exports:read: Every past export
+            settings:manage: Change the receipt threshold
+            categories:manage: Add or remove categories
+            employees:read-all: Every employee
+            employees:manage: Set an employee's line manager
+  parameters:
+    limit: { name: limit, in: query, schema: { type: integer, default: 20, maximum: 100 } }
+    offset: { name: offset, in: query, schema: { type: integer, default: 0 } }
+    status:
+      name: status
+      in: query
+      schema: { type: string, enum: [draft, submitted, approved, rejected, withdrawn] }
+    claimId: { name: claimId, in: path, required: true, schema: { type: string } }
+    lineId: { name: lineId, in: path, required: true, schema: { type: string } }
+    receiptId: { name: receiptId, in: path, required: true, schema: { type: string } }
+    categoryId: { name: categoryId, in: path, required: true, schema: { type: string } }
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Claim:
+      description: A claim
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Claim' }
+    ClaimPage:
+      description: A page of claims
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [count, data]
+            properties:
+              count: { type: integer }
+              next: { type: string, nullable: true }
+              previous: { type: string, nullable: true }
+              data: { type: array, items: { $ref: '#/components/schemas/Claim' } }
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: integer, description: HTTP or application error code }
+        message: { type: string, description: Short human-readable label }
+        description: { type: string, description: Detailed explanation }
+        moreInfo: { type: string, description: URI to documentation }
+    Employee:
+      type: object
+      required: [id, name, email]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string }
+        managerId: { type: string, nullable: true }
+        managerName: { type: string, nullable: true }
+    Category:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string }
+    ReceiptThreshold:
+      type: object
+      required: [thresholdCents]
+      properties:
+        thresholdCents: { type: integer, description: Lines above this amount in cents need a receipt }
+    ReceiptInput:
+      type: object
+      required: [fileName, contentType, contentBase64]
+      properties:
+        fileName: { type: string }
+        contentType: { type: string }
+        contentBase64: { type: string }
+    Receipt:
+      type: object
+      required: [id, fileName, contentType]
+      properties:
+        id: { type: string }
+        fileName: { type: string }
+        contentType: { type: string }
+    LineInput:
+      type: object
+      required: [expenseDate, categoryId, amountCents, description]
+      properties:
+        expenseDate: { type: string, format: date }
+        categoryId: { type: string }
+        amountCents: { type: integer, description: Amount in cents of the company currency }
+        description: { type: string }
+    Line:
+      allOf:
+        - $ref: '#/components/schemas/LineInput'
+        - type: object
+          required: [id, categoryName, receipts]
+          properties:
+            id: { type: string }
+            categoryName: { type: string }
+            receipts:
+              type: array
+              items: { $ref: '#/components/schemas/Receipt' }
+    ClaimInput:
+      type: object
+      required: [lines]
+      properties:
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/LineInput' }
+    Claim:
+      type: object
+      required: [id, employeeId, employeeName, status, totalCents, lines]
+      properties:
+        id: { type: string }
+        employeeId: { type: string }
+        employeeName: { type: string }
+        status: { type: string, enum: [draft, submitted, approved, rejected, withdrawn] }
+        totalCents: { type: integer, description: Sum of line amounts in cents }
+        rejectionReason: { type: string, nullable: true }
+        submittedAt: { type: string, format: date-time, nullable: true }
+        decidedAt: { type: string, format: date-time, nullable: true }
+        exportedAt: { type: string, format: date-time, nullable: true }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/Line' }
+    ExportBatch:
+      type: object
+      required: [id, exportedByName, exportedAt, claimIds]
+      properties:
+        id: { type: string }
+        exportedByName: { type: string }
+        exportedAt: { type: string, format: date-time }
+        claimIds:
+          type: array
+          items: { type: string }

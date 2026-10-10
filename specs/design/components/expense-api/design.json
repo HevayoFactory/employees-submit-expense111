@@ -1,0 +1,18 @@
+{
+  "name": "expense-api",
+  "type": "service",
+  "version": "0.1.0",
+  "language": "Ballerina",
+  "buildpack": "docker",
+  "appPath": "expense-api",
+  "entrypoint": "deployment/service",
+  "exposure": "internet",
+  "dependencies": [
+    { "kind": "platform-resource", "name": "user-auth", "resourceType": "thunder-app", "description": "Validates the sign-in of callers and defines the permission scopes." },
+    { "kind": "platform-resource", "name": "expense-db", "resourceType": "postgres-cnpg", "description": "Stores employees, claims, expense lines, receipts, categories, the receipt threshold, exports and the audit log." },
+    { "kind": "external", "name": "email-service", "description": "Sends the notification emails: manager on submission, employee on approval or rejection." }
+  ],
+  "description": "The single backend: owns claims, expense lines, receipts, categories, the receipt threshold, employees and reporting lines, approvals, payroll CSV exports, the audit log (P1) and the email notifications triggered by claim events. It is one service because all of this shares one data model and one lifecycle; it does not serve a UI and does not issue tokens.",
+  "stories": ["F1.1", "F1.2", "F1.3", "F1.4", "F1.5", "F1.6", "F1.7", "F1.8", "F2.1", "F2.2", "F2.3", "F2.4", "F3.1", "F3.2", "F3.3", "F4.1", "F4.2", "F4.3"],
+  "skillsPinned": ["openapi-conventions", "ballerina", "thunder-authentication", "api-management"]
+}
