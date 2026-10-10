@@ -28,7 +28,9 @@ See [Product-wide](product-wide.md).
 ## Out of Scope
 
 - Integration with a specific payroll system; the export is a generic file.
+- An agent reading receipt images; employees enter claim details themselves.
 
 ## Open Questions
 
 1. Do managers of managers, or finance, approve claims above some amount?
+
