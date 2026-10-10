@@ -29,8 +29,5 @@ See [Product-wide](product-wide.md).
 
 - Integration with a specific payroll system; the export is a generic file.
 - An agent reading receipt images; employees enter claim details themselves.
-
-## Open Questions
-
-1. Do managers of managers, or finance, approve claims above some amount?
+- Approval by anyone other than the employee's line manager, including deputies and finance approval above a limit.
 
